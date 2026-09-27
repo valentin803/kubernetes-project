@@ -9,13 +9,15 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
-      - name: Show files
-        run: ls -la
+      - name: Setup Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+
+      - name: Show Python version
+        run: python --version
 
       - name: Run Python app
-        run: python3 app/test.py
-
-      - name: Say Hello
-        run: echo "Hello from GitHub Actions"
+        run: python app/test.py
