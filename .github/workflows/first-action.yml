@@ -14,5 +14,8 @@ jobs:
       - name: Show files
         run: ls -la
 
+      - name: Run Python app
+        run: python3 app/test.py
+
       - name: Say Hello
         run: echo "Hello from GitHub Actions"
