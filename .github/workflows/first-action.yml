@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. GitHub runner-ul descarcă repository-ul
+      # 1. Descarcă repository-ul pe GitHub Runner
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -34,7 +34,7 @@ jobs:
       # 4. Rulează testele Python
       - name: Run tests
         run: |
-          pytest
+          python -m pytest
 
       # 5. Login în GitHub Container Registry
       - name: Login to GitHub Container Registry
@@ -61,7 +61,12 @@ jobs:
           sleep 5
 
           docker ps
-          curl --fail http://localhost:5000
+
+          curl --fail \
+            --retry 5 \
+            --retry-delay 2 \
+            --retry-connrefused \
+            http://localhost:5000
 
       # 8. Șterge containerul de test
       - name: Remove test container
