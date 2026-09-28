@@ -24,3 +24,9 @@ jobs:
 
       - name: Run Python app
         run: python app/test.py
+
+      - name: Build Docker image
+        run: docker build -t python-app:latest .
+
+      - name: Run Docker container
+        run: docker run --rm python-app:latest
