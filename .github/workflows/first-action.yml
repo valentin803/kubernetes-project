@@ -24,7 +24,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      # 3. Instalează dependințele aplicației
+      # 3. Instalează dependențele aplicației
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -47,15 +47,18 @@ jobs:
       # 6. Construiește imaginea Docker
       - name: Build Docker image
         run: |
-          docker build -t ghcr.io/valentin803/kubernetes-project:latest .
+          docker build \
+            -t ghcr.io/valentin803/kubernetes-project:${{ github.sha }} \
+            -t ghcr.io/valentin803/kubernetes-project:latest \
+            .
 
-      # 7. Pornește containerul și testează aplicația
+      # 7. Pornește containerul și testează aplicația Flask
       - name: Test Docker container
         run: |
           docker run -d \
             --name python-app-test \
             -p 5000:5000 \
-            ghcr.io/valentin803/kubernetes-project:latest
+            ghcr.io/valentin803/kubernetes-project:${{ github.sha }}
 
           echo "Waiting for Flask application to start..."
           sleep 5
@@ -77,4 +80,42 @@ jobs:
       # 9. Trimite imaginea Docker în GHCR
       - name: Push Docker image
         run: |
+          docker push ghcr.io/valentin803/kubernetes-project:${{ github.sha }}
           docker push ghcr.io/valentin803/kubernetes-project:latest
+
+      # 10. Configurează conexiunea SSH către masterul Kubernetes
+      - name: Setup SSH
+        env:
+          VULTR_HOST: ${{ secrets.VULTR_HOST }}
+          VULTR_SSH_KEY: ${{ secrets.VULTR_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+
+          printf '%s\n' "$VULTR_SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key
+
+          chmod 600 ~/.ssh/deploy_key
+
+          ssh-keyscan -H "$VULTR_HOST" >> ~/.ssh/known_hosts
+
+      # 11. Deploy automat al noii imagini în Kubernetes
+      - name: Deploy to Kubernetes
+        env:
+          VULTR_HOST: ${{ secrets.VULTR_HOST }}
+          VULTR_USER: ${{ secrets.VULTR_USER }}
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            "$VULTR_USER@$VULTR_HOST" \
+            "kubectl set image deployment/python-app \
+            python-app=ghcr.io/valentin803/kubernetes-project:${{ github.sha }} && \
+            kubectl rollout status deployment/python-app --timeout=120s"
+
+      # 12. Verifică Deployment-ul după update
+      - name: Verify Kubernetes deployment
+        env:
+          VULTR_HOST: ${{ secrets.VULTR_HOST }}
+          VULTR_USER: ${{ secrets.VULTR_USER }}
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            "$VULTR_USER@$VULTR_HOST" \
+            "kubectl get deployment python-app && \
+            kubectl get pods -l app=python-app"
